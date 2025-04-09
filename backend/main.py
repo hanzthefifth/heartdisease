@@ -1,30 +1,34 @@
-from flask import Flask, send_from_directory, jsonify
+# main.py
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from calc import calculate_risk, generate_explanation, generate_recommendations
+#from ai_model.predict import predict as ai_predict  # placeholder for later
 
-#create flask app, specify folder for html files
-app = Flask(__name__, static_folder='public', static_url_path='/')
+app = Flask(__name__)
+CORS(app)
 
-# Route to serve the React app's index.html file.
-@app.route('/')
-def serve_index():
-    return send_from_directory(app.static_folder, 'index.html')
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.json
+    manual_score = calculate_risk(data)
+    explanation = generate_explanation(manual_score)
+    recommendations = generate_recommendations(manual_score)
 
-# Example API endpoint that the React app can call for data.
-@app.route('/api/data')
-def get_data():
-    data = {
-        "message": "Hello from the Flask API!",
-        "user": "John Doe",
-        "riskFactor": 42
+    # AI model call
+    # try:
+    #     ai_prediction, ai_confidence = ai_predict(data)
+    # except:
+    #     ai_prediction = None
+    #     ai_confidence = None
+
+    result = {
+        "riskScore": manual_score,
+        "explanation": explanation,
+        "recommendations": recommendations,
+       # "aiPrediction": ai_prediction,
+       # "aiConfidence": ai_confidence
     }
-    return jsonify(data) #send back to react as JSON
-
-# Catch-all route to support client-side routing with React Router.
-# Any URL not handled by the above routes will return the index.html file,
-# allowing React Router to handle the routing on the client side.
-@app.errorhandler(404)
-def not_found(e):
-    return send_from_directory(app.static_folder, 'index.html')
+    return jsonify(result)
 
 if __name__ == '__main__':
-    #run flask in debug mode
     app.run(debug=True)
