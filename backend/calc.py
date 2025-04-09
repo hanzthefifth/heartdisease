@@ -1,0 +1,110 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)
+
+def calculate_risk(data):
+    age = int(data.get("age", 0))
+    sex = data.get("sex", "male")
+    totalCholesterol = int(data.get("totalCholesterol", 0))
+    hdlCholesterol = int(data.get("hdlCholesterol", 0))
+    systolicBP = int(data.get("systolicBP", 0))
+    onHypertensionTreatment = data.get("onHypertensionTreatment", False)
+    smokingStatus = data.get("smokingStatus", False)
+    hasDiabetes = data.get("hasDiabetes", False)
+
+    score = 0
+    # Age-based points
+    if 20 <= age <= 34:
+        score += -1 if sex == "male" else -9
+    elif 35 <= age <= 39:
+        score += 0 if sex == "male" else -4
+    elif 40 <= age <= 44:
+        score += 1 if sex == "male" else 0
+    elif 45 <= age <= 49:
+        score += 2 if sex == "male" else 3
+    elif 50 <= age <= 54:
+        score += 3 if sex == "male" else 6
+    elif 55 <= age <= 59:
+        score += 4 if sex == "male" else 7
+    elif 60 <= age <= 64:
+        score += 5 if sex == "male" else 8
+    elif 65 <= age <= 69:
+        score += 6 if sex == "male" else 9
+    elif 70 <= age <= 74:
+        score += 7 if sex == "male" else 10
+    elif 75 <= age <= 79:
+        score += 8 if sex == "male" else 11
+
+    # Total Cholesterol Points
+    if 160 <= totalCholesterol < 200:
+        score += 4
+    elif 200 <= totalCholesterol < 240:
+        score += 7 if sex == "male" else 8
+    elif 240 <= totalCholesterol < 280:
+        score += 9 if sex == "male" else 11
+    elif totalCholesterol >= 280:
+        score += 11 if sex == "male" else 13
+
+    # HDL Cholesterol Points
+    if hdlCholesterol >= 60:
+        score -= 1
+    elif 50 <= hdlCholesterol < 60:
+        score += 0
+    elif 40 <= hdlCholesterol < 50:
+        score += 1
+    elif hdlCholesterol < 40:
+        score += 2
+
+    # Systolic Blood Pressure Points
+    if 120 <= systolicBP < 130:
+        score += 1 if onHypertensionTreatment else 0
+    elif 130 <= systolicBP < 140:
+        score += 2 if onHypertensionTreatment else 1
+    elif 140 <= systolicBP < 160:
+        score += 3 if onHypertensionTreatment else 2
+    elif systolicBP >= 160:
+        score += 4 if onHypertensionTreatment else 3
+
+    # Smoking Status Points
+    if smokingStatus:
+        score += 4 if sex == "male" else 3
+
+    # Diabetes Status Points
+    if hasDiabetes:
+        score += 3 if sex == "male" else 4
+
+    return score
+
+def generate_explanation(score):
+    if score < 31:
+        return "Your risk score is low. Keep up your healthy lifestyle!"
+    elif score < 61:
+        return "Your risk score is moderate. Consider lifestyle changes and consult your doctor."
+    else:
+        return "Your risk score is high. It is recommended to see a healthcare professional."
+
+def generate_recommendations(score):
+    if score < 31:
+        return ["Maintain a balanced diet", "Regular exercise", "Keep regular check-ups"]
+    elif score < 61:
+        return ["Monitor your health", "Consult a nutritionist", "Consider lifestyle adjustments"]
+    else:
+        return ["Schedule a visit with your doctor", "Consider medical intervention", "Monitor your health closely"]
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.json
+    score = calculate_risk(data)
+    explanation = generate_explanation(score)
+    recommendations = generate_recommendations(score)
+    result = {
+        "riskScore": score,
+        "explanation": explanation,
+        "recommendations": recommendations
+    }
+    return jsonify(result)
+
+if __name__ == '__main__':
+    app.run(debug=True)
